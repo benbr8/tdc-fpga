@@ -1,0 +1,66 @@
+Inbetriebnahme des Time to Digital Converters
+---------------------
+---------------------
+
+
+Der TDC-Wrapper ist die Schnittstelle zwischen dem TDC und der übergeordneten Logik. Dort 
+werden die für den Betrieb notwendigen Taktsignale generiert und das taktübergreifende
+Interface instanziiert.
+
+----------------------
+-- Interface:
+----------------------
+clk: Takt der übergeordneten Logik
+ce: Keine Funktion
+CLK_PIN: Signal des Taktpins des FPGAs
+RST: High Active Reset. Der TDC _muss_ nach dem Systemstart zurückgesetzt werden.
+
+START: Startsignal der Zeitmessung
+STOP: Stopsignal der Zeitmessung
+CALIB_EN: TDC wird kalibriert solange CALIB_EN = '1' ist
+READY:  Signalisiert der übergeordneten Logik, dass die initiale Kalibrierung nach dem
+        Reset durchgeführt wurde. Wenn READY='1' ist, können Zeitmessungen durchgeführt werden.
+
+time_fifo_*:    Leseseite des FWFT-FIFOs zur Übertragung der TDC-Messwerte über die Taktgrenze
+                hinweg.
+period_fifo_*:  Schreibeseite des FIFOs, welcher eine Anpassung des für die Berechnung des
+                Messergebnisses verwendeten Zeitwertes einer Taktperiode in Picosekunden CLK_IN_PS.
+
+
+----------------------
+-- Constraints:
+----------------------
+
+Die Elemente der TDL-Abschnitte des TDC werden durch Constraints im Code relativ zueinander
+automatisch platziert. Die Platzierung der einzelnen Abschnitte muss jedoch manuell
+durchgeführt werden.
+
+Der TDC wird in der selben Taktregion platziert, in der sich die I/O-Pins des Taktsignals
+befinden. Die TDL-Abschnitte werden in der oberen Hälfte der Taktregion möglichst parallel
+nebeneinander Platziert. Platziert man die Abschnitte der 0- und 180-Grad-Phase einer TDL
+zusammen in einer Spalte aus CLBs, können diese die selbe Taktleitung verwenden.
+
+Die Datenverarbeitung des TDC findet in der selben Taktregion statt.
+
+Mittels PBLOCK-Constraint kann der Ringoszillator, welcher das Kalibrierungssignal
+erzeugt, in Vivado in der Nähe der globalen Clockbuffer auf eine Fläche eingeengt werden, um
+eine möglichst konstante Oszillationsfrequenz über mehrere Implementierungsdurchläufe hinweg
+zu erreichen.
+
+
+----------------------
+-- Anpassungen:
+----------------------
+
+Sollen Start- und Stopsignal zu Testzwecken intern auf dem FPGA geroutet werden, müssen die BUFRs
+im Modul TDC, welche die Start- und Stopsignale zu den Multiplexern leiten, welche zwischen Takt-
+und Kalibrierungssignal umschalten, auskommentiert und durch eine direkte Signalzuweisung ersetzt
+werden.
+
+Eine Struktur zum Nach-Aussen-Führen der Werte des Kalibrierungshistogramms ist im Code auskommentiert.
+Möchte man diese Funktionalität nutzen, müssen die dbg_*-Signale im Code der Module tdc_pkg, LUT, Channel,
+TDC und TDC_Wrapper einkommentiert werden. Wird dbg_down.hist_en gesetzt, wird das nächste vollständige
+Histogramm mit der Leitung dbg_up nach aussen geführt.
+Die dbg_*-Struktur kann für beliebige andere Zwecke erweitert werden.
+
+
